@@ -18,6 +18,9 @@ and generalized to all linear layers with weight sharing in
 
 from __future__ import annotations
 
+import torch # ADDED BY ME FOR COMPLEX SUPPORT
+
+
 from collections.abc import MutableMapping
 from functools import partial
 from math import sqrt
@@ -406,21 +409,21 @@ class KFACLinearOperator(_LinearOperator):
             else:
                 for p_name, pos in param_pos.items():
                     if p_name == "weight":
-                        M_w = rearrange(M_torch[pos], "v c_out ... -> v c_out (...)")
+                        M_w = rearrange(M_torch[pos], "v c_out ... -> v c_out (...)").to(torch.complex64) # ADDED BY ME FOR COMPLEX SUPPORT
                         M_torch[pos] = einsum(
                             M_w,
-                            self._input_covariances[mod_name],
+                            self._input_covariances[mod_name].to(torch.complex64), # ADDED BY ME FOR COMPLEX SUPPORT
                             "v c_out j,j k -> v c_out k",
                         )
 
                     M_torch[pos] = einsum(
-                        self._gradient_covariances[mod_name],
-                        M_torch[pos],
+                        self._gradient_covariances[mod_name].to(torch.complex64), # ADDED BY ME FOR COMPLEX SUPPORT
+                        M_torch[pos].to(torch.complex64), # ADDED BY ME FOR COMPLEX SUPPORT
                         "j k,v k ... -> v j ...",
                     )
 
         if return_tensor:
-            M_torch = cat([rearrange(M, "k ... -> (...) k") for M in M_torch])
+            M_torch = cat([rearrange(M, "k ... -> (...) k").to(torch.complex64) for M in M_torch]) # ADDED BY ME FOR COMPLEX SUPPORT
 
         return M_torch
 
@@ -597,7 +600,7 @@ class KFACLinearOperator(_LinearOperator):
         elif self._fisher_type == "mc":
             for mc in range(self._mc_samples):
                 y_sampled = self.draw_label(output)
-                loss = self._loss_func(output, y_sampled)
+                loss = self._loss_func(output.to(torch.float32), y_sampled)
                 loss = self._maybe_adjust_loss_scale(loss, output)
                 grad(loss, self._params, retain_graph=mc != self._mc_samples - 1)
 

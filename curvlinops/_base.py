@@ -8,6 +8,7 @@ from einops import rearrange
 from numpy import allclose, argwhere, float32, isclose, logical_not, ndarray
 from numpy.random import rand
 from scipy.sparse.linalg import LinearOperator
+import torch # ADDED FOR COMPLEX SUPPORT
 from torch import Tensor, cat
 from torch import device as torch_device
 from torch import from_numpy, tensor, zeros_like
@@ -374,7 +375,7 @@ class _LinearOperator(LinearOperator):
         total_grad = [zeros_like(p) for p in self._params]
 
         for X, y in self._loop_over_data(desc="gradient_and_loss"):
-            loss = self._loss_func(self._model_func(X), y)
+            loss = self._loss_func(self._model_func(X).to(torch.float32), y.to(torch.float32)) # ADDED FOR COMPLEX SUPPORT
             normalization_factor = self._get_normalization_factor(X, y)
 
             for grad_param, current in zip(total_grad, grad(loss, self._params)):
