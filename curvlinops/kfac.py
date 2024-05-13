@@ -747,7 +747,7 @@ class KFACLinearOperator(_LinearOperator):
             "batch+sequence": num_loss_terms**2
             / (self._N_data * self._mc_samples * sequence_length),
         }[self._loss_average]
-        covariance = einsum(g, g, "b i,b j->i j").mul_(correction)
+        covariance = einsum(g, g.conj(), "b i,b j->i j").mul_(correction) # ADDED BY ME FOR COMPLEX SUPPORT
 
         if module_name not in self._gradient_covariances:
             self._gradient_covariances[module_name] = covariance
@@ -804,7 +804,7 @@ class KFACLinearOperator(_LinearOperator):
         ):
             x = cat([x, x.new_ones(x.shape[0], 1)], dim=1)
 
-        covariance = einsum(x, x, "b i,b j -> i j").div_(self._N_data * scale)
+        covariance = einsum(x, x.conj(), "b i,b j -> i j").div_(self._N_data * scale) # ADDED BY ME FOR COMPLEX SUPPORT
 
         if module_name not in self._input_covariances:
             self._input_covariances[module_name] = covariance
