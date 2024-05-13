@@ -5,11 +5,45 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import List, Tuple, Union
 
-from backpack.hessianfree.ggnvp import ggn_vector_product_from_plist
+#from backpack.hessianfree.ggnvp import ggn_vector_product_from_plist
 from torch import Tensor, zeros_like
 
 from curvlinops._base import _LinearOperator
 
+# ADDED FOR COMPLEX SUPPORT FROM BACKPACK PACKAGE
+# https://github.com/f-dangel/backpack/blob/master/backpack/hessianfree/ggnvp.py
+
+from typing import List, Tuple
+
+from torch import Tensor
+from torch.nn import Module
+from torch.nn.parameter import Parameter
+
+from backpack.hessianfree.hvp import hessian_vector_product
+from backpack.hessianfree.lop import L_op
+from backpack.hessianfree.rop import R_op
+
+# --------------------------------------------------
+
+def ggn_vector_product_from_plist(
+    loss: Tensor, output: Tensor, plist: List[Parameter], v: List[Tensor]
+) -> Tuple[Tensor]:
+    """Multiply a vector with a sub-block of the generalized Gauss-Newton/Fisher.
+
+    Args:
+        loss: Scalar tensor that represents the loss.
+        output: Model output.
+        plist: List of trainable parameters whose GGN block is used for multiplication.
+        v: Vector specified as list of tensors matching the sizes of ``plist``.
+
+    Returns:
+        GGN-vector product in list format, i.e. as list that matches the sizes of
+        ``plist``.
+    """
+    Jv = R_op(output, plist, v)
+    HJv = hessian_vector_product(loss, output, Jv)
+    JTHJv = L_op(output, [p.conj() for p in plist], HJv) # ADDED conj() for complex support
+    return JTHJv
 
 class GGNLinearOperator(_LinearOperator):
     r"""GGN as SciPy linear operator.
